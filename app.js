@@ -7,10 +7,13 @@ const mongoose = require('mongoose')
 const Student = require('./models/student')
 
 const app = express()
+const server = require('http').Server(app);
+const io = require('socket.io')(server);
 const port = process.env.PORT || 3000
 
 app.use(bodyParsed.urlencoded({ extended: false }))
 app.use(bodyParsed.json())
+app.use(express.static('public'))
 
 app.get('/api/students', (req, res) => {
 
@@ -18,7 +21,6 @@ app.get('/api/students', (req, res) => {
         if (err) res.status(500).send({msg: 'Error en la petición'})
 
         if (!students) res.status(404).send({msg: 'No existe ningun estudiante'})
-
         res.status(200).send({ students })
     })
 })
@@ -31,13 +33,21 @@ app.post('/api/student', (req, res) => {
 
     student.save((err, studentStored) => {
         if (err) throw res.status(500).send({msg: 'Student no guardado'})
-
+        io.emit('updatedList')
         res.status(200).send({success: 'Well Done!', student: studentStored})
     })
+
 })
 
+/*io.on('connection', (socket) => {
+    console.log("Device connected")
+    socket.on('message', (msg)=> {
+        console.log(msg, 'onServer')})
+    socket.emit('updateList', "hola update")
+})*/
+
+
 app.get('/api/student/:id', (req, res) => {
-    console.log('hola')
     let id = req.params.id
     console.log(id)
 
@@ -89,6 +99,7 @@ app.delete('/api/student/:id', (req, res) => {
 
         student.remove(err => {
             if (err) res.status(500).send({msg: 'Error al eliminar'})
+            io.emit('updatedList')
             res.status(200).send({msg: 'Estudiante eliminado'})
         })
     })
@@ -97,7 +108,7 @@ app.delete('/api/student/:id', (req, res) => {
 mongoose.connect('mongodb://localhost:27017/school', (err, res) => {
     if (err) throw err
     console.log('Conectado')
-    app.listen(port, () => {
+    server.listen(port, () => {
         console.log(`API Rest => http://localhost:${port}`)
     })
 })
